@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Math Expression Solver</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      text-align: center;
+      padding-top: 100px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+    }
+    .result {
+      font-size: 20px;
+      color: green;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧮 Math Expression Solver</h1>
+  <p>Enter any valid math expression like:</p>
+  <p><code>2 + 3 * (4 - 1)</code> or <code>Math.sqrt(16)</code> or <code>Math.sin(Math.PI / 2)</code></p>
+
+  <input type="text" id="expression" placeholder="Enter expression here">
+  <button onclick="solveExpression()">Solve</button>
+
+  <div class="result" id="output"></div>
+
+  <script>
+    function solveExpression() {
+      const expression = document.getElementById('expression').value;
+      try {
+        const result = eval(expression);
+        document.getElementById('output').innerText = `Result: ${result}`;
+      } catch (error) {
+        document.getElementById('output').innerText = `Error: Invalid Expression`;
+      }
+    }
+  </script>
+
+</body>
+</html>
