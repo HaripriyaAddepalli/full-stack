@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Simple To-Do List</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* Basic, clean styling using only CSS (no frameworks) */
+    :root { font-family: Arial, Helvetica, sans-serif; }
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+      background: #f4f6f8;
+    }
+    .app {
+      width: 100%;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      padding: 20px;
+    }
+
+    h1 { margin: 0 0 14px 0; font-size: 20px; text-align: center; }
+    form { display:flex; gap:8px; margin-bottom: 14px; }
+    input[type="text"] {
+      flex:1;
+      padding:10px 12px;
+      border: 1px solid #d6dbe0;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+    button {
+      padding: 10px 12px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:active { transform: translateY(1px); }
+
+    ul { list-style: none; padding:0; margin:0; }
+    li {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px;
+      border-bottom: 1px solid #eef2f5;
+    }
+    li:last-child { border-bottom: none; }
+    li .text {
+      flex:1;
+      word-break: break-word;
+    }
+    li.completed .text {
+      text-decoration: line-through;
+      color: #7d8a95;
+    }
+    .action-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding:6px;
+      border-radius:4px;
+    }
+    .action-btn:hover { background: #f1f4f6; }
+    .small { font-size: 13px; color:#475569; }
+
+    /* Responsive smaller screens */
+    @media (max-width:420px){
+      .app { padding: 14px; }
+      input[type="text"]{ font-size:14px; }
+      button{ padding: 9px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-labelledby="title">
+    <h1 id="title">Simple To-Do List</h1>
+
+    <!-- Add new task -->
+    <form id="taskForm" onsubmit="return false;">
+      <input id="taskInput" type="text" placeholder="Add a new task (press Enter or click Add)" aria-label="New task" />
+      <button id="addBtn" type="button">Add</button>
+    </form>
+
+    <!-- Task list -->
+    <ul id="taskList" aria-live="polite"></ul>
+
+    <p class="small" style="margin-top:12px;">Tip: click the text to edit, or use the checkboxes to mark done.</p>
+  </main>
+
+  <script>
+    // Basic To-Do app using only DOM and localStorage
+    (function () {
+      const taskInput = document.getElementById('taskInput');
+      const addBtn = document.getElementById('addBtn');
+      const taskList = document.getElementById('taskList');
+      const STORAGE_KEY = 'simple_todo_tasks_v1';
+
+      // load tasks from localStorage
+      let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+      function save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      }
+
+      function createTaskElement(task) {
+        const li = document.createElement('li');
+        if (task.completed) li.classList.add('completed');
+
+        // checkbox
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = task.completed;
+        cb.setAttribute('aria-label', 'Mark task completed');
+
+        // text (editable)
+        const span = document.createElement('span');
+        span.className = 'text';
+        span.textContent = task.text;
+        span.tabIndex = 0;
+        span.title = 'Click or press Enter to edit';
+
+        // edit when clicked or Enter pressed
+        span.addEventListener('click', () => startEdit(span, task));
+        span.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); startEdit(span, task); }
+        });
+
+        // buttons
+        const editBtn = document.createElement('button');
+        editBtn.className = 'action-btn';
+        editBtn.type = 'button';
+        editBtn.textContent = '✏️';
+        editBtn.title = 'Edit';
+        editBtn.addEventListener('click', () => startEdit(span, task));
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'action-btn';
+        delBtn.type = 'button';
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'Delete';
+        delBtn.addEventListener('click', () => {
+          tasks = tasks.filter(t => t.id !== task.id);
+          save();
+          render();
+        });
+
+        // checkbox changes completed state
+        cb.addEventListener('change', () => {
+          task.completed = cb.checked;
+          save();
+          render();
+        });
+
+        li.appendChild(cb);
+        li.appendChild(span);
+        li.appendChild(editBtn);
+        li.appendChild(delBtn);
+
+        return li;
+      }
+
+      function startEdit(span, task) {
+        // replace span with input for inline edit
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = task.text;
+        input.style.width = '100%';
+        input.style.fontSize = 'inherit';
+        input.style.padding = '6px';
+        span.replaceWith(input);
+        input.focus();
+        // save on blur or Enter
+        function finish(saveChange) {
+          if (saveChange) {
+            const newText = input.value.trim();
+            if (newText) task.text = newText;
+          }
+          save();
+          render();
+        }
+        input.addEventListener('blur', () => finish(true));
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+          if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+        });
+      }
+
+      function render() {
+        taskList.innerHTML = '';
+        if (tasks.length === 0) {
+          const empty = document.createElement('li');
+          empty.className = 'small';
+          empty.textContent = 'No tasks yet. Add one above!';
+          taskList.appendChild(empty);
+          return;
+        }
+        tasks.forEach(task => {
+          taskList.appendChild(createTaskElement(task));
+        });
+      }
+
+      // create and add new task
+      function addTaskFromInput() {
+        const text = taskInput.value.trim();
+        if (!text) return;
+        const newTask = {
+          id: Date.now() + Math.random().toString(36).slice(2,7),
+          text,
+          completed: false
+        };
+        tasks.unshift(newTask); // newest on top
+        save();
+        taskInput.value = '';
+        render();
+        taskInput.focus();
+      }
+
+      // wire up events
+      addBtn.addEventListener('click', addTaskFromInput);
+      taskInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTaskFromInput();
+      });
+
+      // initial render
+      render();
+    })();
+  </script>
+</body>
+</html>
